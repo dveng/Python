@@ -1,0 +1,262 @@
+tkinter界面卡死的解决办法
+
+ 0、如果点击按钮，运行了一个比较耗时的操作，那么界面会卡死
+
+复制代码
+
+import tkinter as tk
+
+import time
+
+def onclick(text, i):
+
+   time.sleep(3)
+
+   text.insert(tk.END, '按了第{}个按钮\n'.format(i))
+
+   
+
+   
+
+root = tk.Tk()
+
+text = tk.Text(root)
+
+text.pack()
+
+tk.Button(root, text='按钮1', command=lambda :onclick(text,1)).pack()
+
+tk.Button(root, text='按钮2', command=lambda :onclick(text,2)).pack()
+
+root.mainloop()
+
+复制代码
+
+ 
+
+解决办法：
+
+方式一、直接开线程
+
+复制代码
+
+import tkinter as tk
+
+import time
+
+import threading
+
+songs = ['爱情买卖','朋友','回家过年','好日子']
+
+movies = ['阿凡达','猩球崛起']
+
+def music(songs):
+
+    global text # 故意的，注意与movie的区别
+
+    for s in songs:
+
+        text.insert(tk.END, "听歌曲：%s \t-- %s\n" %(s, time.ctime()))
+
+        time.sleep(3)
+
+def movie(movies, text):
+
+    for m in movies:
+
+        text.insert(tk.END, "看电影：%s \t-- %s\n" %(m, time.ctime()))
+
+        time.sleep(5)
+
+    
+
+def thread_it(func, *args):
+
+    '''将函数打包进线程'''
+
+    # 创建
+
+    t = threading.Thread(target=func, args=args) 
+
+    # 守护 !!!
+
+    t.setDaemon(True) 
+
+    # 启动
+
+    t.start()
+
+   
+
+root = tk.Tk()
+
+text = tk.Text(root)
+
+text.pack()
+
+tk.Button(root, text='音乐', command=lambda :thread_it(music, songs)).pack()
+
+tk.Button(root, text='电影', command=lambda :thread_it(movie, movies, text)).pack()
+
+root.mainloop()
+
+复制代码
+
+ 
+
+方式二、继承 threading.Thread 类
+
+复制代码
+
+import tkinter as tk
+
+import time
+
+import threading
+
+songs = ['爱情买卖','朋友','回家过年','好日子']
+
+movies = ['阿凡达','猩球崛起']
+
+def music(songs):
+
+    global text # 故意的，注意与movie的区别
+
+    for s in songs:
+
+        text.insert(tk.END, "听歌曲：%s \t-- %s\n" %(s, time.ctime()))
+
+        time.sleep(3)
+
+def movie(movies, text):
+
+    for m in movies:
+
+        text.insert(tk.END, "看电影：%s \t-- %s\n" %(m, time.ctime()))
+
+        time.sleep(5)
+
+class MyThread(threading.Thread):
+
+    def __init__(self, func, *args):
+
+        super().__init__()
+
+        
+
+        self.func = func
+
+        self.args = args
+
+        
+
+        self.setDaemon(True)
+
+        self.start()    # 在这里开始
+
+        
+
+    def run(self):
+
+        self.func(*self.args)
+
+    
+
+root = tk.Tk()
+
+text = tk.Text(root)
+
+text.pack()
+
+tk.Button(root, text='音乐', command=lambda :MyThread(music, songs)).pack()
+
+tk.Button(root, text='电影', command=lambda :MyThread(movie, movies, text)).pack()
+
+root.mainloop()
+
+复制代码
+
+
+，搞一个界面类：
+
+复制代码
+
+import tkinter as tk
+
+import time
+
+import threading
+
+songs = ['爱情买卖','朋友','回家过年','好日子'] 
+
+films = ['阿凡达','猩球崛起']
+
+class Application(tk.Tk):
+
+def __init__(self):
+
+        super().__init__()
+
+        
+
+        self.createUI()
+
+    # 生成界面
+
+    def createUI(self):
+
+        self.text = tk.Text(self)
+
+        self.text.pack()
+
+        tk.Button(self, text='音乐', command=lambda :self.thread_it(self.music, songs)).pack(expand=True, side=tk.RIGHT) # 注意lambda语句的作用！
+
+        tk.Button(self, text='电影', command=lambda :self.thread_it(self.movie, films)).pack(expand=True, side=tk.LEFT)
+
+        
+
+    # 逻辑：听音乐
+
+    def music(self, songs):
+
+        for x in songs:
+
+            self.text.insert(tk.END, "听歌曲：%s \t-- %s\n" %(x, time.ctime()))
+
+            print("听歌曲：%s \t-- %s" %(x, time.ctime()))
+
+            time.sleep(3)
+
+    # 逻辑：看电影
+
+    def movie(self, films):
+
+        for x in films:
+
+            self.text.insert(tk.END, "看电影：%s \t-- %s\n" %(x, time.ctime()))
+
+            print("看电影：%s \t-- %s" %(x, time.ctime()))
+
+            time.sleep(5)
+
+    # 打包进线程（耗时的操作）
+
+    @staticmethod
+
+    def thread_it(func, *args):
+
+        t = threading.Thread(target=func, args=args) 
+
+        t.setDaemon(True)   # 守护--就算主界面关闭，线程也会留守后台运行（不对!）
+
+        t.start()           # 启动
+
+        # t.join()          # 阻塞--会卡死界面！
+
+        
+
+        
+
+app = Application()
+
+app.mainloop()
